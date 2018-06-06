@@ -1,0 +1,35 @@
+node {
+       def IMAGE_BASE_NAME="gcr.io/hibot-env/interactions-hibot"
+
+       stage('Checkout'){
+          checkout scm
+       }
+
+        stage('Build') {
+                sh 'sh gradlew build -x test'
+        }
+        stage('Test') {
+                sh 'sh gradlew test'
+        }
+        stage('Archive Artifacts') {
+                archiveArtifacts artifacts: '**/libs/*.jar', fingerprint: true
+                archiveArtifacts artifacts: 'main/src/main/resources/application-qa.properties', fingerprint: true
+        }
+
+        stage('Build Image') {
+            def IMAGE_BUILD_NAME ="interactions"
+            sh "docker build . -t $IMAGE_BUILD_NAME"
+
+            sh "docker tag $IMAGE_BUILD_NAME $IMAGE_BASE_NAME"
+            sh "docker push $IMAGE_BASE_NAME"
+
+            sh "docker tag $IMAGE_BUILD_NAME $IMAGE_BASE_NAME:$BUILD_NUMBER"
+            sh "docker push $IMAGE_BASE_NAME:$BUILD_NUMBER"
+        }
+
+        stage('Deploy') {
+            sh "gcloud container clusters get-credentials dev-cluster --zone us-central1-a --project hibot-env"
+            sh "kubectl set image deployment/interactions-hibot-deployment interactions-hibot=$IMAGE_BASE_NAME:$BUILD_NUMBER"
+
+        }
+}

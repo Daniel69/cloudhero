@@ -1,0 +1,10 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: sec-ingress-https
+spec:
+  tls:
+  - secretName: sec-tls
+  backend:
+    serviceName: ingreso-sec-deployment
+    servicePort: 8080
